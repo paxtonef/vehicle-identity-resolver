@@ -1,0 +1,48 @@
+taxonomy:
+  body_types:
+    - hatchback
+    - sedan
+    - estate
+    - suv
+    - crossover
+    - coupe
+    - convertible
+    - van
+    - pickup
+    - other
+  fuel_types:
+    - petrol
+    - diesel
+    - electric
+    - hybrid
+    - plug_in_hybrid
+    - lpg
+    - cng
+    - hydrogen
+    - other
+  transmission_types:
+    - manual
+    - automatic
+    - automated_manual
+    - cvt
+    - direct_drive
+    - unknown
+  drivetrain_types:
+    - front_wheel_drive
+    - rear_wheel_drive
+    - all_wheel_drive
+    - four_wheel_drive
+    - unknown
+
+normalization:
+  manufacturer_aliases:
+    peugeot: ["peugeot", "peug"]
+    renault: ["renault", "rno"]
+    citroen: ["citroen", "citroën", "cit"]
+    volkswagen: ["volkswagen", "vw", "volks"]
+    bmw: ["bmw", "bayerische motoren werke"]
+  model_aliases:
+    "3008": ["3008"]
+    clio: ["clio"]
+    golf: ["golf"]
+    "308": ["308"]

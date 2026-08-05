@@ -1,0 +1,21 @@
+rules:
+  - id: VIR-BR-001
+    rule: Never declare a specific engine variant without supporting evidence.
+  - id: VIR-BR-002
+    rule: A registration number must always be interpreted within a country context.
+  - id: VIR-BR-003
+    rule: A syntactically valid VIN is not automatically an authentic VIN.
+  - id: VIR-BR-004
+    rule: User-declared data must be distinguished from provider-confirmed data.
+  - id: VIR-BR-005
+    rule: Partial resolution is preferable to fabricated completeness.
+  - id: VIR-BR-006
+    rule: High-severity contradictions block confirmed resolution.
+  - id: VIR-BR-007
+    rule: Unsupported fields must remain null rather than inferred.
+  - id: VIR-BR-008
+    rule: Each canonical field must preserve its evidence trail.
+  - id: VIR-BR-009
+    rule: Provider failure must not invalidate valid user-supplied data.
+  - id: VIR-BR-010
+    rule: Downstream runners must receive resolution status and confidence.

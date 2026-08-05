@@ -1,0 +1,18 @@
+weights:
+  identifier_quality: 0.25
+  source_reliability: 0.25
+  field_consistency: 0.25
+  configuration_specificity: 0.15
+  user_confirmation: 0.10
+
+levels:
+  confirmed:
+    minimum_score: 0.90
+  high:
+    minimum_score: 0.75
+  medium:
+    minimum_score: 0.50
+  low:
+    minimum_score: 0.25
+  unresolved:
+    minimum_score: 0.00
