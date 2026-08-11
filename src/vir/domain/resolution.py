@@ -34,7 +34,15 @@ from vir.domain.models import (
 )
 from vir.domain.confidence import ConfidenceEngine
 from vir.domain.contradictions import ContradictionEngine
-from vir.domain.invariants import invariant_004_no_owner_identity
+from vir.domain.invariants import (
+    invariant_001_raw_never_overwrites_normalized,
+    invariant_003_no_field_without_provenance,
+    invariant_004_no_owner_identity,
+    invariant_005_uncertainty_visible,
+    invariant_006_source_attribution_preserved,
+    invariant_007_ambiguous_not_confirmed,
+    _populated_identity_field_paths,
+)
 
 
 class ResolutionEngine:
@@ -92,8 +100,14 @@ class ResolutionEngine:
             limitations=limitations,
         )
 
-        # Enforce invariants
+        # Enforce core invariants — all four are now actually wired (P2.5
+        # closure; previously only invariant_004 was called, and 001/005/006/007
+        # existed as dormant code with real logic that nothing ever invoked).
+        invariant_003_no_field_without_provenance(resolution)
         invariant_004_no_owner_identity(resolution)
+        invariant_005_uncertainty_visible(resolution)
+        invariant_006_source_attribution_preserved(resolution.field_evidence)
+        invariant_007_ambiguous_not_confirmed(resolution)
 
         self.state = ResolutionState(status.value) if status != ResolutionStatus.CONTRADICTORY else ResolutionState.CONTRADICTORY
         return resolution
@@ -143,9 +157,13 @@ class ResolutionEngine:
             # Remove multiple dashes
             while "--" in normalized:
                 normalized = normalized.replace("--", "-")
+            invariant_001_raw_never_overwrites_normalized(raw, normalized)
             data["registration"]["registration_number"] = normalized
         if request.vin:
-            data["vin"] = request.vin.strip().upper().replace(" ", "")
+            raw_vin = request.vin
+            normalized_vin = raw_vin.strip().upper().replace(" ", "")
+            invariant_001_raw_never_overwrites_normalized(raw_vin, normalized_vin)
+            data["vin"] = normalized_vin
         return VehicleIdentityRequest(**data)
 
     async def _query_providers(self, request: VehicleIdentityRequest) -> list[ProviderVehicleRecord]:
@@ -332,21 +350,15 @@ class ResolutionEngine:
         best = candidates[0]
         identity = best.identity
 
-        fields = [
-            ("manufacturer", identity.manufacturer),
-            ("model", identity.model),
-            ("production.year", identity.production.year),
-            ("fuel.primary_type", identity.fuel.primary_type.value if identity.fuel.primary_type else None),
-            ("engine.power_kw", identity.engine.power_kw),
-            ("transmission.type", identity.transmission.type.value if identity.transmission.type else None),
-        ]
+        # Every populated leaf field gets an evidence entry — not a fixed
+        # subset. This uses the same field enumeration invariant_003 checks
+        # against, so evidence coverage and the invariant that requires it
+        # can no longer silently drift apart (P2.5 closure).
+        populated_fields = _populated_identity_field_paths(identity)
 
-        for field_path, value in fields:
-            if value is None:
-                continue
+        for field_path, value in populated_fields.items():
             sources = []
             for record in records:
-                # Find matching provenance
                 for fp in record.field_provenance:
                     if fp.field_path == field_path:
                         sources.append(SourceEvidence(
