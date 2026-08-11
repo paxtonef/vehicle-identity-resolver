@@ -12,16 +12,12 @@ import yaml
 from vir.domain.models import VehicleIdentityRequest, ManualIdentityInput, ConsentInput, RegistrationInput
 from vir.application.resolve_vehicle import ResolveVehicleUseCase
 from vir.application.build_handoff import HandoffBuilder
-from vir.adapters.manual_adapter import ManualAdapter
-from vir.adapters.registration_provider_adapter import FrenchRegistrationProviderAdapter
-from vir.adapters.vin_decoder_adapter import VINDecoderAdapter
+from vir.provider_registry import build_providers
 
 
-_DEFAULT_PROVIDERS = [
-    ManualAdapter(),
-    FrenchRegistrationProviderAdapter(),
-    VINDecoderAdapter(),
-]
+# Wire up providers from the Provider Registry — see api/routes.py's
+# comment; previously duplicated here as a separate hardcoded list.
+_DEFAULT_PROVIDERS = build_providers()
 
 
 def _build_parser() -> argparse.ArgumentParser:

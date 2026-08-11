@@ -1,0 +1,33 @@
+# Provider Registry — single declarative source of truth for which adapter
+# classes exist and how to instantiate them.
+#
+# Replaces the two previously-duplicated _DEFAULT_PROVIDERS lists (api/routes.py
+# and cli/main.py) — both entry points now build their provider list from this
+# file via vir.provider_registry.build_providers(), so they can no longer
+# silently drift apart.
+#
+# countries/identifier_types here are declarative expectations, cross-checked
+# at load time against each adapter class's actual `supported_countries` /
+# `supported_identifier_types` attributes (see provider_registry.py) — a
+# mismatch is a load-time error, not a silent inconsistency.
+
+provider_registry:
+  version: "0.1.0"
+  providers:
+    - provider_id: manual_input
+      module: vir.adapters.manual_adapter
+      class_name: ManualAdapter
+      countries: []
+      identifier_types: [manual]
+
+    - provider_id: provider-fr-registration
+      module: vir.adapters.registration_provider_adapter
+      class_name: FrenchRegistrationProviderAdapter
+      countries: [FR]
+      identifier_types: [registration]
+
+    - provider_id: vin-decoder-stub
+      module: vir.adapters.vin_decoder_adapter
+      class_name: VINDecoderAdapter
+      countries: []
+      identifier_types: [vin]

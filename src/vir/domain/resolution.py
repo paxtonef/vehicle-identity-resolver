@@ -171,45 +171,65 @@ class ResolutionEngine:
         records: list[ProviderVehicleRecord] = []
         for provider in self.providers:
             try:
-                provider_records: list[ProviderVehicleRecord] = []
-                if request.vin and "vin" in getattr(provider, "supported_identifier_types", []):
-                    # RGM/RGG governance gate (P4): is this provider permitted
-                    # to be called for a VIN lookup? Not a Core concern — see
-                    # RUNTIME_GOVERNANCE_MANIFEST.md's external_services section.
-                    if not RGG.is_provider_permitted(provider.adapter_id, None, "vin"):
-                        continue
-                    provider_records = await provider.decode_vin(request.vin)
-                elif (
-                    request.registration.registration_number
-                    and "registration" in getattr(provider, "supported_identifier_types", [])
-                    and request.registration.country_code in getattr(provider, "supported_countries", [])
-                ):
-                    if not RGG.is_provider_permitted(
-                        provider.adapter_id, request.registration.country_code, "registration"
-                    ):
-                        continue
-                    provider_records = await provider.resolve_registration(
-                        request.registration.registration_number,
-                        request.registration.country_code,
-                    )
-                elif (
-                    request.manual_identity.manufacturer
-                    and "manual" in getattr(provider, "supported_identifier_types", [])
-                ):
-                    if not RGG.is_provider_permitted(provider.adapter_id, None, "manual"):
-                        continue
-                    provider_records = await provider.retrieve_vehicle_configuration(
-                        manufacturer=request.manual_identity.manufacturer,
-                        model=request.manual_identity.model,
-                        year=request.manual_identity.production_year,
-                        fuel_type=request.manual_identity.fuel_type,
-                    )
+                applicable = self._applicable_identifier(provider, request)
+                if applicable is None:
+                    continue
+                identifier_type, country = applicable
+
+                # Single RGM/RGG governance gate (P4, consolidated in P5) —
+                # was previously duplicated once per identifier-type branch.
+                # See RUNTIME_GOVERNANCE_MANIFEST.md's external_services section.
+                if not RGG.is_provider_permitted(provider.adapter_id, country, identifier_type):
+                    continue
+
+                provider_records = await self._dispatch(provider, identifier_type, request)
                 if provider_records:
                     records.extend(provider_records)
             except Exception:
                 # Provider failure must not invalidate user data (VIR-BR-009)
                 continue
         return records
+
+    @staticmethod
+    def _applicable_identifier(
+        provider: Any, request: VehicleIdentityRequest
+    ) -> tuple[str, str | None] | None:
+        """Determine which identifier_type (and country, if relevant) this
+        provider would be queried for, given the request — capability
+        matching only, no governance decision yet. Returns None if the
+        provider isn't capable of anything the request offers."""
+        supported = getattr(provider, "supported_identifier_types", [])
+        if request.vin and "vin" in supported:
+            return "vin", None
+        if (
+            request.registration.registration_number
+            and "registration" in supported
+            and request.registration.country_code in getattr(provider, "supported_countries", [])
+        ):
+            return "registration", request.registration.country_code
+        if request.manual_identity.manufacturer and "manual" in supported:
+            return "manual", None
+        return None
+
+    @staticmethod
+    async def _dispatch(
+        provider: Any, identifier_type: str, request: VehicleIdentityRequest
+    ) -> list[ProviderVehicleRecord]:
+        if identifier_type == "vin":
+            return await provider.decode_vin(request.vin)
+        if identifier_type == "registration":
+            return await provider.resolve_registration(
+                request.registration.registration_number,
+                request.registration.country_code,
+            )
+        if identifier_type == "manual":
+            return await provider.retrieve_vehicle_configuration(
+                manufacturer=request.manual_identity.manufacturer,
+                model=request.manual_identity.model,
+                year=request.manual_identity.production_year,
+                fuel_type=request.manual_identity.fuel_type,
+            )
+        raise ValueError(f"Unknown identifier_type: {identifier_type}")  # pragma: no cover
 
     def _build_candidates(
         self,
