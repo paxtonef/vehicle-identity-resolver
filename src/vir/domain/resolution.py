@@ -223,11 +223,25 @@ class ResolutionEngine:
                 request.registration.country_code,
             )
         if identifier_type == "manual":
+            # Mapping completeness contract (P6.2, yours): every field
+            # ManualIdentityInput carries must reach the provider, or be
+            # explicitly excluded — not silently dropped. Previously,
+            # engine_displacement_cc, engine_power_kw, and
+            # transmission_type were never forwarded, even though
+            # ManualAdapter reads and uses all three.
+            # tests/test_resolution_dispatch_contract.py asserts every
+            # non-None ManualIdentityInput field is present in this call's
+            # kwargs, so a future field added to that model without being
+            # forwarded here fails the test suite instead of disappearing
+            # silently.
             return await provider.retrieve_vehicle_configuration(
                 manufacturer=request.manual_identity.manufacturer,
                 model=request.manual_identity.model,
                 year=request.manual_identity.production_year,
                 fuel_type=request.manual_identity.fuel_type,
+                engine_displacement_cc=request.manual_identity.engine_displacement_cc,
+                engine_power_kw=request.manual_identity.engine_power_kw,
+                transmission_type=request.manual_identity.transmission_type,
             )
         raise ValueError(f"Unknown identifier_type: {identifier_type}")  # pragma: no cover
 

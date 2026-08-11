@@ -59,13 +59,16 @@ async def resolve_vehicle(request: VehicleIdentityRequest):
 
 @app.post("/v1/vehicle-identities/{resolution_id}/clarifications", response_model=VehicleIdentityResolution)
 async def submit_clarifications(resolution_id: str, request: ClarificationRequest):
-    stored = STORE.get_resolution(resolution_id)
-    if stored is None:
+    stored_resolution = STORE.get_resolution(resolution_id)
+    stored_request = STORE.get_request(resolution_id)
+    if stored_resolution is None or stored_request is None:
         raise ResolutionNotFoundError(resolution_id)
 
     use_case = ClarifyResolutionUseCase(providers=_DEFAULT_PROVIDERS)
     try:
-        enriched_request, new_resolution = await use_case.execute(stored, request.answers)
+        enriched_request, new_resolution = await use_case.execute(
+            stored_request, stored_resolution, request.answers
+        )
     except VIRBaseError:
         raise
     except Exception as exc:

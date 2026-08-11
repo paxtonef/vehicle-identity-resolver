@@ -152,8 +152,9 @@ async def resolve_form(request: Request):
 
 @router.post("/clarify/{resolution_id}", response_class=HTMLResponse)
 async def clarify_form(request: Request, resolution_id: str):
-    stored = STORE.get_resolution(resolution_id)
-    if stored is None:
+    stored_resolution = STORE.get_resolution(resolution_id)
+    stored_request = STORE.get_request(resolution_id)
+    if stored_resolution is None or stored_request is None:
         return templates.TemplateResponse(
             request,
             "index.html",
@@ -169,14 +170,16 @@ async def clarify_form(request: Request, resolution_id: str):
 
     use_case = ClarifyResolutionUseCase(providers=_PROVIDERS)
     try:
-        enriched_request, new_resolution = await use_case.execute(stored, answers)
+        enriched_request, new_resolution = await use_case.execute(
+            stored_request, stored_resolution, answers
+        )
     except VIRBaseError as exc:
-        label, description = _status_info(stored.resolution_status)
+        label, description = _status_info(stored_resolution.resolution_status)
         return templates.TemplateResponse(
             request,
             "result.html",
             {
-                "resolution": stored,
+                "resolution": stored_resolution,
                 "status_label": label,
                 "status_description": description,
                 "error_message": exc.message,
