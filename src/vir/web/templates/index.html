@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block subtitle %}Renseignez au moins un identifiant véhicule{% endblock %}
+{% block content %}
+
+{% if error_message %}
+<div class="error-box">{{ error_message }}</div>
+{% endif %}
+
+<form method="post" action="/resolve">
+
+  <fieldset>
+    <legend>VIN</legend>
+    <label for="vin">Numéro d'identification du véhicule (17 caractères)</label>
+    <input type="text" id="vin" name="vin" maxlength="17" placeholder="ex. VF3XXXXXXXXXXXXXX" value="{{ form_values.vin or '' }}">
+  </fieldset>
+
+  <fieldset>
+    <legend>Immatriculation</legend>
+    <label for="registration_number">Numéro d'immatriculation</label>
+    <input type="text" id="registration_number" name="registration_number" placeholder="ex. AB-123-CD" value="{{ form_values.registration_number or '' }}">
+    <label for="country_code">Pays d'immatriculation</label>
+    <select id="country_code" name="country_code">
+      <option value="FR" {% if form_values.country_code == 'FR' or not form_values.country_code %}selected{% endif %}>France (FR)</option>
+    </select>
+    <p class="limitations">Seule l'immatriculation française est actuellement prise en charge (voir la Provider Registry).</p>
+  </fieldset>
+
+  <fieldset>
+    <legend>Description manuelle</legend>
+    <label for="manufacturer">Constructeur</label>
+    <input type="text" id="manufacturer" name="manufacturer" placeholder="ex. Peugeot" value="{{ form_values.manufacturer or '' }}">
+    <label for="model">Modèle</label>
+    <input type="text" id="model" name="model" placeholder="ex. 308" value="{{ form_values.model or '' }}">
+    <label for="production_year">Année de production</label>
+    <input type="number" id="production_year" name="production_year" min="1900" max="2100" value="{{ form_values.production_year or '' }}">
+    <label for="fuel_type">Motorisation</label>
+    <select id="fuel_type" name="fuel_type">
+      <option value="">—</option>
+      <option value="petrol" {% if form_values.fuel_type == 'petrol' %}selected{% endif %}>Essence</option>
+      <option value="diesel" {% if form_values.fuel_type == 'diesel' %}selected{% endif %}>Diesel</option>
+      <option value="electric" {% if form_values.fuel_type == 'electric' %}selected{% endif %}>Électrique</option>
+      <option value="hybrid" {% if form_values.fuel_type == 'hybrid' %}selected{% endif %}>Hybride</option>
+    </select>
+  </fieldset>
+
+  <div class="checkbox-row">
+    <input type="checkbox" id="consent" name="consent" value="yes" {% if form_values.consent %}checked{% endif %}>
+    <label for="consent" style="margin:0;">J'autorise la consultation de sources externes (nécessaire pour VIN et immatriculation)</label>
+  </div>
+
+  <button type="submit">Résoudre l'identité du véhicule</button>
+</form>
+
+{% endblock %}

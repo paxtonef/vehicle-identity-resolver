@@ -49,3 +49,8 @@ class ContradictoryVehicleIdentityError(VIRBaseError):
 class ExternalLookupNotAuthorizedError(VIRBaseError):
     def __init__(self):
         super().__init__("VIR-ERR-009", "External lookup not authorized", 403)
+
+
+class ResolutionNotFoundError(VIRBaseError):
+    def __init__(self, resolution_id: str = ""):
+        super().__init__("VIR-ERR-010", f"Resolution not found: {resolution_id}".strip(), 404)

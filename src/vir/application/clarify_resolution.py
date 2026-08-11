@@ -19,7 +19,7 @@ class ClarifyResolutionUseCase:
         self,
         resolution: VehicleIdentityResolution,
         answers: list[ClarificationAnswer],
-    ) -> VehicleIdentityResolution:
+    ) -> tuple[VehicleIdentityRequest, VehicleIdentityResolution]:
         # Build an enriched request from the original resolution + answers
         original_request = self._reconstruct_request(resolution)
         enriched = self._apply_answers(original_request, answers)
@@ -30,7 +30,7 @@ class ClarifyResolutionUseCase:
 
         # Preserve original request_id and chain resolution
         new_resolution.request_id = resolution.request_id
-        return new_resolution
+        return enriched, new_resolution
 
     def _reconstruct_request(self, resolution: VehicleIdentityResolution) -> VehicleIdentityRequest:
         identity = resolution.vehicle_identity

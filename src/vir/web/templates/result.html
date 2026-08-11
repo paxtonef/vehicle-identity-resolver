@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+{% block subtitle %}Résultat de la résolution{% endblock %}
+{% block content %}
+
+{% if error_message %}
+<div class="error-box">{{ error_message }}</div>
+{% endif %}
+
+<p>
+  <span class="status-badge status-{{ resolution.resolution_status.value }}">{{ status_label }}</span>
+  &nbsp;·&nbsp; Confiance : {{ "%.0f"|format(resolution.confidence.score * 100) }}% ({{ resolution.confidence.level.value }})
+</p>
+<p class="limitations">{{ status_description }}</p>
+
+{% if resolution.vehicle_identity %}
+<h2>Identité résolue</h2>
+<table>
+  <tr><th>Constructeur</th><td>{{ resolution.vehicle_identity.manufacturer or "—" }}</td></tr>
+  <tr><th>Modèle</th><td>{{ resolution.vehicle_identity.model or "—" }}</td></tr>
+  <tr><th>Génération</th><td>{{ resolution.vehicle_identity.generation or "—" }}</td></tr>
+  <tr><th>Année</th><td>{{ resolution.vehicle_identity.production.year or "—" }}</td></tr>
+  <tr><th>Carburant</th><td>{{ resolution.vehicle_identity.fuel.primary_type.value if resolution.vehicle_identity.fuel.primary_type else "—" }}</td></tr>
+  <tr><th>Moteur</th><td>{{ resolution.vehicle_identity.engine.commercial_name or "—" }}{% if resolution.vehicle_identity.engine.power_kw %} ({{ resolution.vehicle_identity.engine.power_kw }} kW){% endif %}</td></tr>
+  <tr><th>Transmission</th><td>{{ resolution.vehicle_identity.transmission.type.value if resolution.vehicle_identity.transmission.type else "—" }}</td></tr>
+  <tr><th>VIN</th><td>{{ resolution.vehicle_identity.identifiers.vin or "—" }}</td></tr>
+  <tr><th>Immatriculation</th><td>{{ resolution.vehicle_identity.identifiers.registration_number or "—" }}</td></tr>
+</table>
+{% endif %}
+
+{% if resolution.contradictions %}
+<h2>Contradictions détectées</h2>
+<ul class="limitations">
+  {% for c in resolution.contradictions %}
+  <li><strong>{{ c.field_path }}</strong> :
+    {% for v in c.values %}{{ v.value }} ({{ v.source_id }}){% if not loop.last %} vs {% endif %}{% endfor %}
+    [{{ c.severity }}]
+  </li>
+  {% endfor %}
+</ul>
+{% endif %}
+
+{% if resolution.alternative_candidates %}
+<h2>Autres configurations possibles</h2>
+<ul class="limitations">
+  {% for c in resolution.alternative_candidates %}
+  <li>{{ c.identity.manufacturer }} {{ c.identity.model }}{% if c.identity.engine.power_kw %} — {{ c.identity.engine.power_kw }} kW{% endif %}{% if c.identity.fuel.primary_type %} — {{ c.identity.fuel.primary_type.value }}{% endif %}</li>
+  {% endfor %}
+</ul>
+{% endif %}
+
+{% if resolution.unresolved_fields %}
+<h2>Champs non résolus</h2>
+<ul class="unresolved">
+  {% for f in resolution.unresolved_fields %}<li>{{ f }}</li>{% endfor %}
+</ul>
+{% endif %}
+
+{% if resolution.limitations %}
+<h2>Limites</h2>
+<ul class="limitations">
+  {% for l in resolution.limitations %}<li>{{ l }}</li>{% endfor %}
+</ul>
+{% endif %}
+
+{% if resolution.field_evidence %}
+<h2>Preuves par champ</h2>
+<table>
+  {% for fe in resolution.field_evidence %}
+  <tr>
+    <th>{{ fe.field_path }}</th>
+    <td>
+      {{ fe.resolved_value }}
+      <div class="evidence-source">
+        {% for s in fe.sources %}{{ s.source_id }} ({{ s.reliability }}){% if not loop.last %}, {% endif %}{% endfor %}
+      </div>
+    </td>
+  </tr>
+  {% endfor %}
+</table>
+{% endif %}
+
+{% if resolution.clarification_questions %}
+<h2>Une précision serait utile</h2>
+<form method="post" action="/clarify/{{ resolution.resolution_id }}">
+  {% for q in resolution.clarification_questions %}
+  <fieldset>
+    <legend>{{ q.prompt }}</legend>
+    {% if q.choices %}
+      {% for choice in q.choices %}
+      <label>
+        <input type="radio" name="answer__{{ q.question_id }}" value="{{ choice.value if choice.value is not none else '' }}">
+        {{ choice.label }}
+      </label>
+      {% endfor %}
+    {% else %}
+      <input type="text" name="answer__{{ q.question_id }}" placeholder="Votre réponse">
+    {% endif %}
+  </fieldset>
+  {% endfor %}
+  <button type="submit">Envoyer la précision</button>
+</form>
+{% endif %}
+
+<p class="back-link"><a href="/">← Nouvelle résolution</a></p>
+<p class="limitations">ID de résolution : {{ resolution.resolution_id }} · <a href="/v1/vehicle-identities/{{ resolution.resolution_id }}">voir en JSON</a></p>
+
+{% endblock %}

@@ -15,6 +15,7 @@ class Settings(BaseSettings):
     vir_provider_timeout_ms: int = 5000
     vir_provider_api_key: str | None = None
     vir_store_raw_provider_payload: bool = False
+    vir_database_path: str = "vir_data.db"
 
 
 class ConfigurationError(RuntimeError):
