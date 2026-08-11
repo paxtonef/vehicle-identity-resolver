@@ -1,5 +1,12 @@
 # Vehicle Identity Resolver — Runtime Governance Manifest (P3)
 
+**Source of truth:** the YAML block below is mirrored, verbatim, at
+`src/vir/resources/rgm.yaml` — that packaged file is what `vir.governance`
+actually loads and enforces (P4). A parity test
+(`tests/test_governance.py::test_markdown_and_packaged_rgm_match`) fails the
+suite if the two ever diverge, so this document can't silently go stale the
+way the pre-P0.1 config loader did.
+
 **Scope discipline (per your framing):** this manifest does not restate
 rules already enforced by VIR Core — see `GOVERNANCE_RULE_EXTRACTION.md`
 (P2) and `P2_5_CORE_GOVERNANCE_CLOSURE.md`. It references those guarantees
@@ -51,7 +58,7 @@ runtime_governance_manifest:
         countries: []
         identifier_types: [vin]
         network: none   # same note as above
-    enforcement_status: NOT YET ENFORCED — see "Implementation Gap" below
+    enforcement_status: ENFORCED (P4) — see vir.governance.LightweightRGG, wired into ResolutionEngine._query_providers
 
   outbound_network:
     current_state: none
@@ -119,10 +126,10 @@ runtime_governance_manifest:
 
 ---
 
-## Implementation Gap — `external_services` is Not Yet Enforced
+## `external_services` Enforcement — Implemented in P4
 
-This is the one section of the manifest above that describes a policy with
-**no corresponding runtime check today**. Confirmed in P2:
+This was the one section of the manifest with no corresponding runtime
+check when P3 was written. Confirmed gap at the time:
 
 ```
 Provider registered
@@ -134,32 +141,47 @@ country supported
 CALL PROVIDER
 ```
 
-There is no governance decision point between "this provider matches the
-request" and "call it". The manifest's `external_services.default: deny`
-with an explicit allowlist is aspirational until a real check exists:
+**Now implemented** (`src/vir/governance.py`, wired into
+`ResolutionEngine._query_providers`):
 
 ```
 Provider registered
       +
 technical compatibility
       ↓
-Governance policy   <-- does not exist yet
+LightweightRGG.is_provider_permitted(provider_id, country, identifier_type)
       ↓
 Is this provider permitted?
-      ├─ NO → block
+      ├─ NO  → skip this provider (resolution degrades, does not crash)
       └─ YES → execute
 ```
 
-**This is deliberately not implemented in this document.** Per your
-framing, this is exactly the kind of rule that belongs to P4 (Lightweight
-RGG), not to a retrofit inside `ResolutionEngine`. Writing the enforcement
-now, without the RGG's request/response interception point designed first,
-would risk scattering governance logic back into business code — the
-mistake P2.5 just finished undoing for the Core side.
+The decision point sits exactly where P3 said it should — before the
+provider call, inside `_query_providers`, not inside business/domain logic.
+`ResolutionEngine` does not know or care *why* a provider was skipped
+(governance denial and provider failure both result in "no records from
+this provider"), which keeps VIR-BR-009 (provider failure must not
+invalidate valid user data) intact without special-casing governance.
+
+**Verified:**
+- The real, packaged allowlist (`src/vir/resources/rgm.yaml`) exactly
+  covers the three currently-registered providers — no regression.
+- A provider not on the allowlist is proven to be silently skipped through
+  the *real* `ResolutionEngine.resolve()` (not just at the `LightweightRGG`
+  unit level) — the resolution degrades to `INSUFFICIENT_DATA` rather than
+  crashing or leaking data from an unpermitted source.
+- The RGM itself follows the same load-integrity discipline as `vir.config`
+  (P0.1): missing, corrupt, or schema-invalid RGM blocks import with
+  `RuntimeGovernanceError`, eagerly, at startup — a governance policy that
+  fails to load must never be silently treated as "nothing is restricted".
+- A packaged-vs-documented parity test prevents this markdown's embedded
+  YAML from silently diverging from the enforced `rgm.yaml`.
 
 ## What P3 Deliberately Does Not Do
 
-- **Does not implement `default: deny` enforcement.** That's P4.
+- **`default: deny` enforcement is implemented — in P4, not here.** P3 only
+  specified the policy; `vir/governance.py` (added in P4) is what actually
+  enforces it, wired into `ResolutionEngine._query_providers`.
 - **Does not add per-provider consent scoping.** Flagged as a gap, not
   silently assumed away — if it's needed, it requires new Core validation
   work (a new field on `ConsentInput`), not just an RGG rule.

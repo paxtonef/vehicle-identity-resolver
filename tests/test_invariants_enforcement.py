@@ -31,6 +31,17 @@ from vir.domain.resolution import ResolutionEngine
 from vir.ports.vehicle_provider import VehicleDataProvider
 
 
+@pytest.fixture(autouse=True)
+def _bypass_rgg_for_fake_provider(monkeypatch):
+    """These tests exercise Core invariant enforcement (P2.5), not runtime
+    governance (P4) — bypass the RGG's external_services allowlist so the
+    fake test provider below isn't blocked by default:deny. RGG-specific
+    behavior (including that default:deny correctly blocks an unlisted
+    provider) is tested separately in tests/test_governance.py."""
+    from vir.domain import resolution as resolution_module
+    monkeypatch.setattr(resolution_module.RGG, "is_provider_permitted", lambda *a, **k: True)
+
+
 class _TwoCloseCandidatesProvider(VehicleDataProvider):
     """A fake, high-confidence, single-source provider that returns two
     richly-populated candidates agreeing on every field except fuel type.

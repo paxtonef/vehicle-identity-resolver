@@ -43,6 +43,7 @@ from vir.domain.invariants import (
     invariant_007_ambiguous_not_confirmed,
     _populated_identity_field_paths,
 )
+from vir.governance import RGG
 
 
 class ResolutionEngine:
@@ -172,12 +173,21 @@ class ResolutionEngine:
             try:
                 provider_records: list[ProviderVehicleRecord] = []
                 if request.vin and "vin" in getattr(provider, "supported_identifier_types", []):
+                    # RGM/RGG governance gate (P4): is this provider permitted
+                    # to be called for a VIN lookup? Not a Core concern — see
+                    # RUNTIME_GOVERNANCE_MANIFEST.md's external_services section.
+                    if not RGG.is_provider_permitted(provider.adapter_id, None, "vin"):
+                        continue
                     provider_records = await provider.decode_vin(request.vin)
                 elif (
                     request.registration.registration_number
                     and "registration" in getattr(provider, "supported_identifier_types", [])
                     and request.registration.country_code in getattr(provider, "supported_countries", [])
                 ):
+                    if not RGG.is_provider_permitted(
+                        provider.adapter_id, request.registration.country_code, "registration"
+                    ):
+                        continue
                     provider_records = await provider.resolve_registration(
                         request.registration.registration_number,
                         request.registration.country_code,
@@ -186,6 +196,8 @@ class ResolutionEngine:
                     request.manual_identity.manufacturer
                     and "manual" in getattr(provider, "supported_identifier_types", [])
                 ):
+                    if not RGG.is_provider_permitted(provider.adapter_id, None, "manual"):
+                        continue
                     provider_records = await provider.retrieve_vehicle_configuration(
                         manufacturer=request.manual_identity.manufacturer,
                         model=request.manual_identity.model,
