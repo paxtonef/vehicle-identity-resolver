@@ -1,3 +1,7 @@
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.build_meta"
+
 [project]
 name = "vehicle-identity-resolver"
 version = "0.1.0"
@@ -17,6 +21,15 @@ dev = [
     "pytest-asyncio>=0.21",
     "httpx>=0.24",
 ]
+
+[project.scripts]
+vir = "vir.cli.main:run"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+vir = []
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
